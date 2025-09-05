@@ -1,0 +1,78 @@
+name: 'Tag Action Python' 
+description: 'Create a tag for the current commit (Python composite implementation)'
+inputs:
+  user_tag:
+    description: 'Tag provided by the user'
+    required: false
+    default: ''
+  default_bump:
+    description: 'Default bump type: major, minor, patch, prerelease'
+    required: false
+    default: 'patch'
+  tag_suffix:
+    description: 'Tag suffix provided by the user. It will be appended to the tag'
+    required: false
+    default: ''
+  tag_prefix:
+    description: 'Tag prefix provided by the user. It will be prepended to the tag'
+    required: false
+    default: ''
+  prereleaseIdentifier:
+    description: 'Default is true. Set to false to omit the prerelease number'
+    required: false
+    default: 'true'
+  github_token:
+    description: 'GitHub token'
+    required: true
+  fetch_all_tags:
+    description: 'Fetch all tags from the repository'
+    required: false
+    default: 'false'
+  is_dry_run:
+    description: 'Dry run mode - do not push the tag'
+    required: false
+    default: 'false'
+outputs:
+  tag:
+    description: 'The tag created'
+    value: ${{ steps.create-tag.outputs.tag }}
+  version:
+    description: 'The version created (numeric without leading v unless prefix present)'
+    value: ${{ steps.create-tag.outputs.version }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install packaging PyGithub
+
+    - name: Create Tag
+      id: create-tag
+      shell: bash
+      env:
+        INPUT_USER_TAG: ${{ inputs.user_tag }}
+        INPUT_DEFAULT_BUMP: ${{ inputs.default_bump }}
+        INPUT_TAG_SUFFIX: ${{ inputs.tag_suffix }}
+        INPUT_TAG_PREFIX: ${{ inputs.tag_prefix }}
+        INPUT_PRERELEASEIDENTIFIER: ${{ inputs.prereleaseIdentifier }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
+        INPUT_FETCH_ALL_TAGS: ${{ inputs.fetch_all_tags }}
+        INPUT_IS_DRY_RUN: ${{ inputs.is_dry_run }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+        python scripts/create_tag.py
+
+    - name: Output values (debug)
+      if: always()
+      shell: bash
+      run: |
+        echo "Tag => ${{ steps.create-tag.outputs.tag }}"
+        echo "Version => ${{ steps.create-tag.outputs.version }}"
