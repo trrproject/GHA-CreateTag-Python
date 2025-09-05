@@ -109,8 +109,14 @@ def main():
         default_bump = os.getenv('INPUT_DEFAULT_BUMP', 'patch').strip()
         tag_suffix = os.getenv('INPUT_TAG_SUFFIX', '').strip()
         tag_prefix = os.getenv('INPUT_TAG_PREFIX', '').strip()
-        prerelease_identifier = os.getenv('INPUT_PRERELEASEIDENTIFIER', 'true').strip()
-        prerelease_flag = prerelease_identifier.lower() == 'true'
+        prerelease_identifier_raw = os.getenv('INPUT_PRERELEASEIDENTIFIER', 'true').strip()
+        # If user passes 'true' or 'false' we treat as flag controlling numbering; default identifier is 'prerelease'
+        if prerelease_identifier_raw.lower() in ('true', 'false'):
+            prerelease_flag = prerelease_identifier_raw.lower() == 'true'
+            prerelease_identifier = 'prerelease'
+        else:
+            prerelease_identifier = prerelease_identifier_raw
+            prerelease_flag = True
         github_token = os.getenv('INPUT_GITHUB_TOKEN')
         fetch_all_tags = get_bool('INPUT_FETCH_ALL_TAGS', False)
         is_dry_run = get_bool('INPUT_IS_DRY_RUN', False)
@@ -152,7 +158,11 @@ def main():
             log('Tag created successfully')
 
         # Set outputs
-        with open(os.getenv('GITHUB_OUTPUT'), 'a', encoding='utf-8') as fh:
+        github_output = os.getenv('GITHUB_OUTPUT')
+        if not github_output:
+            # Fallback path (unlikely in GitHub runners but useful for local tests)
+            github_output = os.path.join(os.getcwd(), 'GITHUB_OUTPUT.txt')
+        with open(github_output, 'a', encoding='utf-8') as fh:
             fh.write(f"tag={new_tag}\n")
             fh.write(f"version={version_value}\n")
 
@@ -160,7 +170,7 @@ def main():
     except Exception as e:
         log(f"::error::{e}")
         # Also fail the action
-        print(f"::set-output name=error::{str(e)}")
+    # ::set-output deprecated; using exit code only.
         sys.exit(1)
 
 
